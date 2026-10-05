@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10101a">
+  <title>BOOM AI - Your AI Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2 class="logo">💥 BOOM AI</h2>
+        <button id="closeSidebar" class="icon-btn mobile-only">✕</button>
+      </div>
+
+      <button id="newChat" class="new-chat">＋ New Chat</button>
+
+      <div class="history-heading">Recent Chats</div>
+      <div id="history" class="history"></div>
+
+      <div class="sidebar-bottom">
+        <div class="profile">
+          <div class="avatar">B</div>
+          <div>
+            <strong>BOOM AI</strong>
+            <small>AI Assistant</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="menuBtn" class="icon-btn">☰</button>
+          <div>
+            <h2>BOOM AI</h2>
+            <span class="status"><i></i> AI Assistant</span>
+          </div>
+        </div>
+
+        <button id="clearChat" class="clear-btn">🗑 Clear</button>
+      </header>
+
+      <section id="chatBox" class="chat-box">
+        <div class="welcome">
+          <div class="welcome-logo">💥</div>
+          <h1>Welcome to BOOM AI</h1>
+          <p>Your ideas start here. What would you like to explore?</p>
+
+          <div class="suggestions">
+            <button class="suggestion" data-prompt="Explain JavaScript in simple words">
+              <span>💻</span>
+              <strong>Learn coding</strong>
+              <small>Explain JavaScript simply</small>
+            </button>
+
+            <button class="suggestion" data-prompt="Give me 5 creative project ideas">
+              <span>💡</span>
+              <strong>Get ideas</strong>
+              <small>Explore new project ideas</small>
+            </button>
+
+            <button class="suggestion" data-prompt="Help me create a study timetable">
+              <span>📚</span>
+              <strong>Study help</strong>
+              <small>Make a study timetable</small>
+            </button>
+
+            <button class="suggestion" data-prompt="Write a short motivational story">
+              <span>✨</span>
+              <strong>Be creative</strong>
+              <small>Write a short story</small>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="input-area">
+        <form id="chatForm" class="chat-form">
+          <input
+            id="userInput"
+            type="text"
+            placeholder="Message BOOM AI..."
+            autocomplete="off"
+            maxlength="10000"
+            required
+          >
+          <button type="submit" id="sendBtn" aria-label="Send message">➤</button>
+        </form>
+
+        <div class="footer-note">
+          BOOM AI can make mistakes. Verify important information.
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div id="overlay" class="overlay"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
