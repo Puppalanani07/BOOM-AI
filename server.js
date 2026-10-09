@@ -1,6 +1,4 @@
 const express = require("express");
-const OpenAI = require("openai");
-const mongoose = require("mongoose");
 require("dotenv").config();
 
 const app = express();
@@ -8,111 +6,76 @@ const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-console.log(
-  "API KEY LOADED:",
-  process.env.OPENAI_API_KEY ? "YES" : "NO"
-);
+app.use((req, res, next) => {
+  const origin = req.get("Origin");
+  const allowedOrigin = process.env.FRONTEND_ORIGIN;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  if (origin && origin === allowedOrigin) {
+    res.set("Access-Control-Allow-Origin", allowedOrigin);
+    res.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.vary("Origin");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(origin === allowedOrigin ? 204 : 403);
+  }
+
+  next();
 });
-
-const Chat = mongoose.model(
-  "Chat",
-  new mongoose.Schema({
-    sessionId: String,
-    message: String,
-    reply: String,
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-  })
-);
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-app.post("/api/chat", async (req, res) => {
-  try {
-    const { sessionId, messages } = req.body;
-
-    const response = await openai.responses.create({
-      model: "gpt-5.6-luna",
-      instructions:
-        "You are BOOM AI, a helpful and friendly AI assistant. Reply clearly and simply.",
-      input: messages,
-    });
-
-    const reply = response.output_text;
-
-    const lastMessage = messages
-      .filter((m) => m.role === "user")
-      .pop();
-
-    if (lastMessage) {
-      await Chat.create({
-        sessionId,
-        message: lastMessage.content,
-        reply,
-      });
-    }
-
-    res.json({ reply });
-  } catch (error) {
-    console.error("FULL OPENAI ERROR:", error);
-
-    res.status(500).json({
-      error: error.message || "OpenAI request failed",
-    });
-  }
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
 });
 
-app.get("/api/history/:sessionId", async (req, res) => {
+async function forwardToPython(res, path, options = {}) {
+  let response;
   try {
-    const chats = await Chat.find({
-      sessionId: req.params.sessionId,
-    }).sort({ createdAt: 1 });
-
-    res.json(chats);
+    response = await fetch(
+      `${process.env.GROQ_SERVICE_URL || "http://127.0.0.1:5001"}${path}`,
+      options
+    );
   } catch (error) {
-    res.status(500).json({
-      error: "Unable to load chat history",
+    res.status(503).json({
+      error:
+        "Unable to reach the Python service. Start it with `python groq_service.py` and try again.",
+    });
+    return;
+  }
+
+  try {
+    const result = await response.json();
+    res.status(response.status).json(result);
+  } catch (error) {
+    res.status(502).json({
+      error: "The Python service returned an invalid response.",
     });
   }
+}
+
+app.post("/api/chat", (req, res) => {
+  forwardToPython(res, "/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req.body),
+  });
 });
 
-app.delete("/api/history/:sessionId", async (req, res) => {
-  try {
-    await Chat.deleteMany({
-      sessionId: req.params.sessionId,
-    });
+app.get("/api/history/:sessionId", (req, res) => {
+  const sessionId = encodeURIComponent(req.params.sessionId);
+  forwardToPython(res, `/api/history/${sessionId}`);
+});
 
-    res.json({
-      message: "Chat history cleared",
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: "Unable to clear chat history",
-    });
-  }
+app.delete("/api/history/:sessionId", (req, res) => {
+  const sessionId = encodeURIComponent(req.params.sessionId);
+  forwardToPython(res, `/api/history/${sessionId}`, { method: "DELETE" });
 });
 
 const PORT = process.env.PORT || 3000;
-
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("MongoDB connected successfully");
-
-    app.listen(PORT, () => {
-      console.log(`BOOM AI running at http://localhost:${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error(
-      "MongoDB connection failed:",
-      error.message
-    );
-  });
+app.listen(PORT, () => {
+  console.log(`BOOM AI running at http://localhost:${PORT}`);
+});

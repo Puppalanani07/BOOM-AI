@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+.venv/
+__pycache__/
 
 # Local environment variables and secrets
 .env

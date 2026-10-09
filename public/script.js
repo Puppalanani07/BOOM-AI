@@ -10,6 +10,11 @@ const menuBtn = document.getElementById("menuBtn");
 const closeSidebar = document.getElementById("closeSidebar");
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("overlay");
+const apiBaseUrl = (window.BOOM_API_BASE_URL || "").replace(/\/+$/, "");
+
+function apiUrl(path) {
+  return `${apiBaseUrl}${path}`;
+}
 
 let sessionId = crypto.randomUUID();
 let conversation = [];
@@ -102,16 +107,44 @@ function showLoading() {
   return loading;
 }
 
+async function readJsonResponse(response) {
+  const body = await response.text();
+  let data;
+
+  if (body.trim()) {
+    try {
+      data = JSON.parse(body);
+    } catch {
+      if (!response.ok) {
+        throw new Error(`Request failed (HTTP ${response.status})`);
+      }
+      throw new Error("Server returned an invalid JSON response.");
+    }
+  } else {
+    if (!response.ok) {
+      throw new Error(`Request failed (HTTP ${response.status})`);
+    }
+    throw new Error("Server returned an empty response.");
+  }
+
+  if (!response.ok) {
+    const message =
+      data && typeof data.error === "string"
+        ? data.error
+        : `Request failed (HTTP ${response.status})`;
+    throw new Error(message);
+  }
+
+  return data;
+}
+
 // Load current conversation history
 async function loadHistory() {
   try {
     const response = await fetch(
-      `/api/history/${encodeURIComponent(sessionId)}`
+      apiUrl(`/api/history/${encodeURIComponent(sessionId)}`)
     );
-
-    if (!response.ok) throw new Error("Unable to load history");
-
-    const chats = await response.json();
+    const chats = await readJsonResponse(response);
     historyBox.replaceChildren();
 
     chats.forEach((chat) => {
@@ -156,19 +189,14 @@ async function sendMessage(text) {
   const loading = showLoading();
 
   try {
-    const response = await fetch("/api/chat", {
+    const response = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, messages: conversation })
     });
 
-    const data = await response.json();
+    const data = await readJsonResponse(response);
     loading.remove();
-
-    if (!response.ok) {
-      conversation.pop();
-      throw new Error(data.error || "Request failed");
-    }
 
     conversation.push({
       role: "assistant",
@@ -179,6 +207,9 @@ async function sendMessage(text) {
     await loadHistory();
   } catch (error) {
     loading.remove();
+    if (conversation[conversation.length - 1]?.role === "user") {
+      conversation.pop();
+    }
     addMessage("ai", "⚠️ " + error.message);
   } finally {
     isSending = false;
@@ -217,11 +248,10 @@ clearChatBtn.addEventListener("click", async () => {
 
   try {
     const response = await fetch(
-      `/api/history/${encodeURIComponent(sessionId)}`,
+      apiUrl(`/api/history/${encodeURIComponent(sessionId)}`),
       { method: "DELETE" }
     );
-
-    if (!response.ok) throw new Error("Unable to clear chat");
+    await readJsonResponse(response);
 
     conversation = [];
     showWelcome();

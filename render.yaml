@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: boom-ai-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_ORIGIN
+        value: https://puppalanani07.github.io
+      - key: GROQ_SERVICE_URL
+        value: http://127.0.0.1:5001
